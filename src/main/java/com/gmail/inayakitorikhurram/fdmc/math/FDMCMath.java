@@ -71,4 +71,8 @@ public class FDMCMath {
             ColorHelper.getBlue(argb) / 255.0f
         );
     }
+
+    public static double squaredMagnitude(double a, double b, double c, double d) {
+        return a * a + b * b + c * c + d * d;
+    }
 }

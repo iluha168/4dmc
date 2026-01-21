@@ -145,6 +145,7 @@
     "util.shape.VoxelShapeMixin",
     "util.shape.VoxelShapesMixin",
     "world.BlockCollisionSpliteratorMixin",
+    "world.BlockViewMixin",
     "world.ClientWorldMixin",
     "world.RedstoneControllerMixin",
     "world.RedstoneViewMixin",

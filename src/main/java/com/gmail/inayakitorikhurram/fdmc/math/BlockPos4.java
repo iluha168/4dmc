@@ -2,19 +2,16 @@ package com.gmail.inayakitorikhurram.fdmc.math;
 
 import com.gmail.inayakitorikhurram.fdmc.mixininterfaces.Direction4;
 import com.gmail.inayakitorikhurram.fdmc.util.UtilConstants;
+import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import it.unimi.dsi.fastutil.Function;
-import it.unimi.dsi.fastutil.ints.IntIterator;
 import net.minecraft.util.BlockRotation;
 import net.minecraft.util.math.*;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.function.Supplier;
 
 public interface BlockPos4<E extends BlockPos4<E, T>, T extends BlockPos> extends Vec4i<E, T> {
 
@@ -123,6 +120,111 @@ public interface BlockPos4<E extends BlockPos4<E, T>, T extends BlockPos> extend
     // inherited from BlockPos
     default BlockPos.Mutable mutableCopy() {
         return asBlockPos().mutableCopy();
+    }
+
+    /** @see BlockPos#method_73158(int, int, int, int, int, int, Vec3d)  */
+    static Iterable<BlockPos> method_73158_4(int x0, int y0, int z0, int w0, int x1, int y1, int z1, int w1, Vec4d direction) {
+        int minX = Math.min(x0, x1);
+        int minY = Math.min(y0, y1);
+        int minZ = Math.min(z0, z1);
+        int minW = Math.min(w0, w1);
+
+        int maxX = Math.max(x0, x1);
+        int maxY = Math.max(y0, y1);
+        int maxZ = Math.max(z0, z1);
+        int maxW = Math.max(w0, w1);
+
+        int dx = maxX - minX;
+        int dy = maxY - minY;
+        int dz = maxZ - minZ;
+        int dw = maxW - minW;
+
+        final int startX = direction.x4 >= 0 ? minX : maxX;
+        final int startY = direction.y  >= 0 ? minY : maxY;
+        final int startZ = direction.z  >= 0 ? minZ : maxZ;
+        final int startW = direction.w  >= 0 ? minW : maxW;
+
+        ImmutableList<Direction.Axis> axesList = Direction.method_73163(direction);
+        Direction4.Axis4 axisY  = Direction4.Axis4.asAxis4(axesList.get(0));
+        Direction4.Axis4 axisH0 = Direction4.Axis4.asAxis4(axesList.get(1));
+        Direction4.Axis4 axisH1 = Direction4.Axis4.asAxis4(axesList.get(2));
+        Direction4.Axis4 axisH2 = Direction4.Axis4.asAxis4(axesList.get(3));
+
+        final Direction4 directionY  = direction.getComponentAlongAxis(axisY ) >= 0 ? axisY .getPositiveDirection4() : axisY .getNegativeDirection4();
+        final Direction4 directionH0 = direction.getComponentAlongAxis(axisH0) >= 0 ? axisH0.getPositiveDirection4() : axisH0.getNegativeDirection4();
+        final Direction4 directionH1 = direction.getComponentAlongAxis(axisH1) >= 0 ? axisH1.getPositiveDirection4() : axisH1.getNegativeDirection4();
+        final Direction4 directionH2 = direction.getComponentAlongAxis(axisH2) >= 0 ? axisH2.getPositiveDirection4() : axisH2.getNegativeDirection4();
+
+        final int dAxisY  = axisY .choose(dx, dy, dz, dw);
+        final int dAxisH0 = axisH0.choose(dx, dy, dz, dw);
+        final int dAxisH1 = axisH1.choose(dx, dy, dz, dw);
+        final int dAxisH2 = axisH2.choose(dx, dy, dz, dw);
+
+        return () -> new AbstractIterator<BlockPos>(){
+            private final BlockPos4.Mutable4 mutableBlockPos4 = BlockPos4.Mutable4.newMutable4();
+
+            private int posY;
+            private int posH0;
+            private int posH1;
+            private int posH2;
+
+            private boolean shouldStop;
+
+            private final int axisY_dx = directionY.getOffsetX4();
+            private final int axisY_dy = directionY.getOffsetY4();
+            private final int axisY_dz = directionY.getOffsetZ4();
+            private final int axisY_dw = directionY.getOffsetW4();
+
+            private final int axisH0_dx = directionH0.getOffsetX4();
+            private final int axisH0_dy = directionH0.getOffsetY4();
+            private final int axisH0_dz = directionH0.getOffsetZ4();
+            private final int axisH0_dw = directionH0.getOffsetW4();
+
+            private final int axisH1_dx = directionH1.getOffsetX4();
+            private final int axisH1_dy = directionH1.getOffsetY4();
+            private final int axisH1_dz = directionH1.getOffsetZ4();
+            private final int axisH1_dw = directionH1.getOffsetW4();
+
+            private final int axisH2_dx = directionH2.getOffsetX4();
+            private final int axisH2_dy = directionH2.getOffsetY4();
+            private final int axisH2_dz = directionH2.getOffsetZ4();
+            private final int axisH2_dw = directionH2.getOffsetW4();
+
+            @Override
+            protected BlockPos computeNext() {
+                if (this.shouldStop) {
+                    return this.endOfData();
+                }
+                this.mutableBlockPos4.set4(
+                    startX +  this.axisY_dx * this.posY  +  this.axisH0_dx * this.posH0  +  this.axisH1_dx * this.posH1 +  this.axisH2_dx * this.posH2,
+                    startY +  this.axisY_dy * this.posY  +  this.axisH0_dy * this.posH0  +  this.axisH1_dy * this.posH1 +  this.axisH2_dy * this.posH2,
+                    startZ +  this.axisY_dz * this.posY  +  this.axisH0_dz * this.posH0  +  this.axisH1_dz * this.posH1 +  this.axisH2_dz * this.posH2,
+                    startW +  this.axisY_dw * this.posY  +  this.axisH0_dw * this.posH0  +  this.axisH1_dw * this.posH1 +  this.axisH2_dw * this.posH2
+                );
+                if (this.posH2 < dAxisH2) {
+                    ++this.posH2;
+                }
+                else if (this.posH1 < dAxisH1) {
+                    ++this.posH1;
+                    this.posH2 = 0;
+                }
+                else if (this.posH0 < dAxisH0) {
+                    ++this.posH0;
+                    this.posH1 = 0;
+                    this.posH2 = 0;
+                }
+                else if (this.posY < dAxisY) {
+                    ++this.posY;
+                    this.posH0 = 0;
+                    this.posH1 = 0;
+                    this.posH2 = 0;
+                }
+                else {
+                    this.shouldStop = true;
+                }
+                return this.mutableBlockPos4.asBlockPos();
+            }
+        };
     }
 
     interface BlockPos4Impl extends BlockPos4<BlockPos4Impl, BlockPos> {

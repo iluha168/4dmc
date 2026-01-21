@@ -172,11 +172,11 @@ public abstract class MixinUtil {
     }
 
     public static Box expandBoundingBoxWrap(Box instance, double value, Operation<Box> original){
-        return Box4.converted(original.call(instance, value)).expand(0, 0.5f + value / FDMCConstants.FOLLOW_RANGE_W_SCALE);
+        return Box4.converted(original.call(instance, value)).expand(0, 0, 0, 0.5f + value / FDMCConstants.FOLLOW_RANGE_W_SCALE);
     }
 
     public static Box expandBoundingBoxWrap(Box instance, double x, double y, double z, Operation<Box> original){
-        return Box4.converted(original.call(instance, x, y, z)).expand(0, 0.5f + x / FDMCConstants.FOLLOW_RANGE_W_SCALE);
+        return Box4.converted(original.call(instance, x, y, z)).expand(0, 0, 0, 0.5f + x / FDMCConstants.FOLLOW_RANGE_W_SCALE);
     }
 
     public static int modifyRandomBlockPosWrap(Random random, int spread, Operation<Integer> original) {

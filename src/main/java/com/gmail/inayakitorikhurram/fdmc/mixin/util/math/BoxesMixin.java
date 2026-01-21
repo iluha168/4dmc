@@ -1,6 +1,8 @@
 package com.gmail.inayakitorikhurram.fdmc.mixin.util.math;
 
 import com.gmail.inayakitorikhurram.fdmc.math.Box4;
+import com.gmail.inayakitorikhurram.fdmc.math.Vec4i;
+import com.gmail.inayakitorikhurram.fdmc.mixininterfaces.Direction4;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Boxes;
 import net.minecraft.util.math.Direction;
@@ -14,7 +16,8 @@ public class BoxesMixin {
 	@Inject(method = "stretch", at = @At(value = "HEAD"), cancellable = true)
 	private static void stretch4(Box box, Direction direction, double length, CallbackInfoReturnable<Box> cir){
 		if (box instanceof Box4 box4) {
-			cir.setReturnValue(box4.stretch(direction, length));
+			Vec4i<?, ?> vec = Direction4.asDirection4(direction).getVector4();
+			cir.setReturnValue(box4.stretch(vec.getX4(), vec.getY4(), vec.getZ4(), length + vec.getW4()));
 		}
 	}
 }

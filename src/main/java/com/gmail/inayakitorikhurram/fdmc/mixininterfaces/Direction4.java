@@ -317,6 +317,19 @@ public interface Direction4 extends StringIdentifiable {
         default double choose(double var1, double var3, double var5) {
             return this.asAxis().choose(var1, var3, var5);
         }
+
+        default Direction4 getPositiveDirection4() {
+            if (name().equals("W")) {
+                return Direction4Constants.ANA4;
+            }
+            return Direction4.asDirection4(this.asAxis().getPositiveDirection());
+        }
+        default Direction4 getNegativeDirection4() {
+            if (name().equals("W")) {
+                return Direction4Constants.KATA4;
+            }
+            return Direction4.asDirection4(this.asAxis().getNegativeDirection());
+        }
     }
 
     interface Type4{

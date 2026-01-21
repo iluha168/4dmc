@@ -74,7 +74,7 @@ public abstract class PlayerEntityMixin extends LivingEntity implements CanPlace
         double w = movement.w;
         double dx = Math.signum(x) * 0.05;
         double dz = Math.signum(z) * 0.05;
-        double dw = Math.signum(z) * 0.05;
+        double dw = Math.signum(w) * 0.05;
 
         while (x != 0.0 && this.isSpaceAroundPlayerEmpty(x, 0.0, 0.0, stepHeight)) {
             if (Math.abs(x) <= 0.05) {

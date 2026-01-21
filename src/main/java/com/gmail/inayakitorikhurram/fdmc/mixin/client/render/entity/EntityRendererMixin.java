@@ -66,7 +66,7 @@ public class EntityRendererMixin {
 
     @WrapOperation(method = "shouldRender", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/math/Box;expand(D)Lnet/minecraft/util/math/Box;"))
     private Box fdmc$expandBoxForFrustrum(Box instance, double value, Operation<Box> original){
-        return Box4.converted(original.call(instance, value)).expand(0,FDMCConstants.ENTITY_RENDER_MAX_DW);
+        return Box4.converted(original.call(instance, value)).expand(0, 0, 0, FDMCConstants.ENTITY_RENDER_MAX_DW);
     }
 
     @WrapOperation(method = "createHitbox", at = @At(value = "INVOKE", target = "Lcom/google/common/collect/ImmutableList$Builder;add(Ljava/lang/Object;)Lcom/google/common/collect/ImmutableList$Builder;", ordinal = 0))

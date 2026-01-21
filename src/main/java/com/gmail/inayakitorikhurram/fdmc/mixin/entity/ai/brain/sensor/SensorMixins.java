@@ -13,6 +13,6 @@ import org.spongepowered.asm.mixin.injection.At;
 class NearestLivingEntitiesSensorMixin{
     @WrapOperation(method = "sense", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/math/Box;expand(DDD)Lnet/minecraft/util/math/Box;"))
     private Box fdmc$expandBox(Box box, double x, double y, double z, Operation<Box> original){
-        return Box4.converted(original.call(box, x, y, z)).expand(0, x / FDMCConstants.FOLLOW_RANGE_W_SCALE);
+        return Box4.converted(original.call(box, x, y, z)).expand(0, 0, 0, x / FDMCConstants.FOLLOW_RANGE_W_SCALE);
     }
 }

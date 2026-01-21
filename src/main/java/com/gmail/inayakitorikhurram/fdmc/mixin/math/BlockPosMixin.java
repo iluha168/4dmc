@@ -1,15 +1,13 @@
 package com.gmail.inayakitorikhurram.fdmc.mixin.math;
 
-import com.gmail.inayakitorikhurram.fdmc.math.BlockPos4;
-import com.gmail.inayakitorikhurram.fdmc.math.DirectWAccess;
-import com.gmail.inayakitorikhurram.fdmc.math.Vec4i;
+import com.gmail.inayakitorikhurram.fdmc.math.*;
 import com.gmail.inayakitorikhurram.fdmc.mixininterfaces.Direction4;
 import com.gmail.inayakitorikhurram.fdmc.util.UtilConstants;
 import com.google.common.collect.AbstractIterator;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.minecraft.util.BlockRotation;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3i;
+import net.minecraft.util.math.*;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -128,5 +126,37 @@ public abstract class BlockPosMixin implements BlockPos4.BlockPos4Impl, DirectWA
     @Override
     public BlockPos.Mutable mutableCopy() {
         return this.mutableCopy4().asBlockPosMutable();
+    }
+
+    @WrapMethod(method = "method_73159")
+    private static Iterable<BlockPos> method_73159_4(Box box, Vec3d vec3, Operation<Iterable<BlockPos>> original){
+        if (box instanceof Box4 box4) {
+            Vec4d vec = Vec4d.of(vec3);
+
+            Vec4d vecMin = box4.getMinPos();
+            int minX = MathHelper.floor(vecMin.x4);
+            int minY = MathHelper.floor(vecMin.y );
+            int minZ = MathHelper.floor(vecMin.z );
+            int minW = MathHelper.floor(vecMin.w );
+
+            Vec4d vecMax = box4.getMaxPos();
+            int maxX = MathHelper.floor(vecMax.x4);
+            int maxY = MathHelper.floor(vecMax.y );
+            int maxZ = MathHelper.floor(vecMax.z );
+            int maxW = MathHelper.floor(vecMax.w );
+
+            return BlockPos4.method_73158_4(minX, minY, minZ, minW, maxX, maxY, maxZ, maxW, vec);
+        }
+        return original.call(box, vec3);
+    }
+
+    @WrapMethod(method = "method_73160")
+    private static Iterable<BlockPos> method_73160_4(BlockPos from3, BlockPos to3, Vec3d vec3, Operation<Iterable<BlockPos>> original){
+        if (vec3 instanceof Vec4d vec) {
+            BlockPos4<?, ?> from = BlockPos4.of(from3);
+            BlockPos4<?, ?> to = BlockPos4.of(to3);
+            return BlockPos4.method_73158_4(from.getX4(), from.getY4(), from.getZ4(), from.getW4(), to.getX4(), to.getY4(), to.getZ4(), to.getW4(), vec);
+        }
+        return original.call(from3, to3, vec3);
     }
 }
