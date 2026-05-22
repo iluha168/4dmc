@@ -10,18 +10,23 @@ import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalRef;
+import net.minecraft.entity.Entity;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.function.BooleanBiFunction;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.shape.VoxelShape;
+import net.minecraft.util.shape.VoxelShapes;
+import net.minecraft.world.WorldView;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
@@ -34,7 +39,7 @@ public abstract class ServerPlayNetworkHandlerMixin {
     @Shadow
     private double lastTickZ;
     @Unique
-    private double lastTickX4, lastTickW, updatedX4, updatedW;
+    private double lastTickX4, lastTickW;
 
 	@Shadow
 	private static double clampHorizontal(double d) { return 0; }
@@ -53,11 +58,13 @@ public abstract class ServerPlayNetworkHandlerMixin {
     }
 
     @Inject(method = "syncWithPlayerPosition", at = @At("TAIL"))
-    void syncWithPlayerPosition4(CallbackInfo ci) {
-        // crash if not a vec4d. we don't want random errors because the pos is not a vec4d
-        Vec4d playerPos = (Vec4d) this.player.getEntityPos();
-        this.updatedX4 = this.lastTickX4 = playerPos.x4;
-        this.updatedW = this.lastTickW = playerPos.w;
+    void syncWithPlayerPosition4(CallbackInfo ci) throws Exception {
+        if (this.player.getEntityPos() instanceof Vec4d playerPos) {
+            this.lastTickX4 = playerPos.x4;
+            this.lastTickW = playerPos.w;
+        } else {
+            throw new Exception("Player pos is not 4D");
+        }
     }
 
     @Expression(value = "?*? + ?*? + ?*?")
@@ -109,21 +116,27 @@ public abstract class ServerPlayNetworkHandlerMixin {
         return distance.lengthSquared();
     }
 
-    @ModifyArg(
-        method = "onPlayerMove",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/server/network/ServerPlayNetworkHandler;isEntityNotCollidingWithBlocks(Lnet/minecraft/world/WorldView;Lnet/minecraft/entity/Entity;Lnet/minecraft/util/math/Box;DDD)Z"),
-        index = 2
-    )
-    Box onPlayerMove$collisionCheck(Box box) {
-        // Make boxes 3D back for player collision check
-        return Box4.flatten(box);
-    }
-
     @Redirect(method = "onPlayerMove", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/network/ServerPlayerEntity;updatePositionAndAngles(DDDFF)V", ordinal = 0))
     void onPlayerMove$followVehicle4(ServerPlayerEntity player, double x, double y, double z, float yaw, float pitch){
         Vec4d playerPos = Vec4d.of(player.getEntityPos());
         ((Entity4) player).updatePositionAndAngles(playerPos, yaw, pitch);
     }
+
+    @Redirect(method = "onPlayerMove", at = @At(
+        value = "INVOKE",
+        target = "Lnet/minecraft/server/network/ServerPlayNetworkHandler;isEntityNotCollidingWithBlocks(Lnet/minecraft/world/WorldView;Lnet/minecraft/entity/Entity;Lnet/minecraft/util/math/Box;DDD)Z"
+    ))
+    boolean checkCollisions4D(ServerPlayNetworkHandler instance, WorldView world, Entity entity, Box boundingBox, double newX, double newY, double newZ, @Share("packetPos") LocalRef<Vec4d> packetPos) {
+        Box4 boundingBotAtFuturePos = (Box4) entity.getBoundingBox().offset(packetPos.get().subtract(entity.getEntityPos()));
+        Iterable<VoxelShape> iterable = world.getCollisions(entity, boundingBotAtFuturePos.contract(MathHelper.EPSILON), boundingBox.getHorizontalCenter());
+        VoxelShape voxelShape = VoxelShapes.cuboid(boundingBox.contract(MathHelper.EPSILON));
+        for (VoxelShape voxelShape2 : iterable) {
+            if (VoxelShapes.matchesAnywhere(voxelShape2, voxelShape, BooleanBiFunction.AND)) continue;
+            return true;
+        }
+        return false;
+    }
+
 
     @Redirect(method = "onPlayerMove", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/network/ServerPlayerEntity;updatePositionAndAngles(DDDFF)V", ordinal = 1))
     void onPlayerMove$setNewPositionServerside(
@@ -131,12 +144,5 @@ public abstract class ServerPlayNetworkHandlerMixin {
         @Share("packetPos") LocalRef<Vec4d> packetPos
     ){
         ((Entity4) player).updatePositionAndAngles(packetPos.get(), yaw, pitch);
-    }
-
-    @Inject(method = "onPlayerMove", at = @At(value = "TAIL"))
-    void onPlayerMove$setUpdated4(PlayerMoveC2SPacket packet, CallbackInfo ci) {
-        Vec4d playerPos = Vec4d.of(this.player.getEntityPos());
-        this.updatedX4 = playerPos.x4;
-        this.updatedW = playerPos.w;
     }
 }
