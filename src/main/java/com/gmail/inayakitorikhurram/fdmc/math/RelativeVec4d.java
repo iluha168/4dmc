@@ -24,7 +24,7 @@ import java.util.List;
  * A RelativeVec4d simply stores the x,y,z, and w values but does not do operations to convert
  * between slices:
  *  new RelativeVec4d(1.2, 0, 0, -0.3) will have x = 1.2, w = -0.3
- *  contrast this with the more compelx class Vec4d:
+ *  contrast this with the more complex class Vec4d:
  *  new Vec4d(1.2, 0, 0, -0.3) will have x = 1.2 - 2^18, w = -0.3
  *  because the negative x3 value will be floored
  */

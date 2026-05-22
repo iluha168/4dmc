@@ -5,12 +5,16 @@ import com.gmail.inayakitorikhurram.fdmc.math.*;
 import com.gmail.inayakitorikhurram.fdmc.mixininterfaces.CanPlaceW;
 import com.gmail.inayakitorikhurram.fdmc.mixininterfaces.Entity4;
 import com.gmail.inayakitorikhurram.fdmc.util.MixinUtil;
+import com.llamalad7.mixinextras.expression.Definition;
+import com.llamalad7.mixinextras.expression.Expression;
+import com.llamalad7.mixinextras.injector.ModifyReceiver;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalDoubleRef;
+import com.llamalad7.mixinextras.sugar.ref.LocalRef;
 import com.mojang.serialization.Codec;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
@@ -29,12 +33,35 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.*;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Entity.class)
 public abstract class EntityMixin implements Nameable, EntityLike, CommandOutput, Entity4 {
+    @Unique
+    public Entity getEntity(){
+        return (Entity) (Object) this;
+    }
+    @Shadow private World world;
+    @Shadow public abstract double getX();
     @Shadow public Vec3d pos;
+    @Shadow public abstract Box getBoundingBox();
+
+    @Shadow public abstract boolean isPlayer();
+
+    @Shadow
+    private @Nullable Entity vehicle;
+
+    @Shadow
+    public abstract double getY();
+
+    @Shadow
+    public abstract Vec3d getEntityPos();
+
+    @Shadow
+    public abstract BlockPos getBlockPos();
+
     @Shadow
     public BlockPos blockPos;
     @Shadow
@@ -45,9 +72,6 @@ public abstract class EntityMixin implements Nameable, EntityLike, CommandOutput
     public double lastZ;
     @Shadow
     protected boolean firstUpdate;
-    @Shadow private World world;
-    @Shadow
-    private @Nullable Entity vehicle;
     @Shadow
     private Vec3d velocity;
     @Shadow
@@ -56,6 +80,15 @@ public abstract class EntityMixin implements Nameable, EntityLike, CommandOutput
     private ChunkPos chunkPos;
     @Shadow
     private EntityChangeListener changeListener;
+
+    @Shadow
+    public abstract void setBoundingBox(Box boundingBox);
+
+    @Shadow
+    protected abstract Box calculateBoundingBox();
+
+    @Shadow
+    public abstract void setAngles(float yaw, float pitch);
 
     @Inject(method = "movementInputToVelocity", at = @At(value = "TAIL"), cancellable = true)
     private static void fdmc$movementInput4ToVelocity4(
@@ -72,34 +105,6 @@ public abstract class EntityMixin implements Nameable, EntityLike, CommandOutput
             speed4.w
         ));
     }
-
-    public Entity getEntity(){
-        return (Entity) (Object) this;
-    }
-
-    @Shadow public abstract double getX();
-
-    @Shadow public abstract Box getBoundingBox();
-
-    @Shadow
-    public abstract void setBoundingBox(Box boundingBox);
-
-    @Shadow public abstract boolean isPlayer();
-
-    @Shadow
-    public abstract double getY();
-
-    @Shadow
-    public abstract Vec3d getEntityPos();
-
-    @Shadow
-    public abstract BlockPos getBlockPos();
-
-    @Shadow
-    protected abstract Box calculateBoundingBox();
-
-    @Shadow
-    public abstract void setAngles(float yaw, float pitch);
 
     @Redirect(
         method = "setPos",
@@ -131,7 +136,7 @@ public abstract class EntityMixin implements Nameable, EntityLike, CommandOutput
 	        FDMCConstants.LOGGER.debug("Something tried to set velocity with a non - RelativeVec4d. The caller should be patched with mixins.\n{}", ExceptionUtils.getStackTrace(new Throwable()));
         }
         if ((velocity instanceof Vec4d) && velocity.length() > 0) {
-            FDMCConstants.LOGGER.debug("Something tried to set velocity with a non - RelativeVec4d (a Vec4d). The caller should be patched with mixins.\n{}", ExceptionUtils.getStackTrace(new Throwable()));
+            FDMCConstants.LOGGER.debug("Something tried to set velocity with a Vec4d. The caller should be patched with mixins.\n{}", ExceptionUtils.getStackTrace(new Throwable()));
         }
         // Enforce that velocity is always set to 4D
         original.call(RelativeVec4d.of(velocity));
@@ -272,6 +277,30 @@ public abstract class EntityMixin implements Nameable, EntityLike, CommandOutput
     @Inject(method = "squaredDistanceTo(Lnet/minecraft/entity/Entity;)D", at = @At("HEAD"), cancellable = true)
     private void modifyDistanceEntity(Entity entity, CallbackInfoReturnable<Double> cir){
         this.modifyDistanceDDD(entity.pos.x, entity.pos.y, entity.pos.z, cir);
+    }
+
+    @Definition(id = "approximatelyEquals", method = "Lnet/minecraft/util/math/MathHelper;approximatelyEquals(DD)Z")
+    @Definition(id = "x", field = "Lnet/minecraft/util/math/Vec3d;x:D")
+    @Expression("approximatelyEquals(?.x, @(?.x))")
+    @ModifyReceiver(method = "move", at = @At("MIXINEXTRAS:EXPRESSION"))
+    Vec3d saveAdjustedForCollisionsMovement(Vec3d adjustedForCollisionsMovement, @Share("adjustedForCollisionsMovement") LocalRef<Vec4d> ref) {
+        ref.set(Vec4d.of(adjustedForCollisionsMovement));
+        return adjustedForCollisionsMovement;
+    }
+
+    @Definition(id = "approximatelyEquals", method = "Lnet/minecraft/util/math/MathHelper;approximatelyEquals(DD)Z")
+    @Definition(id = "x", field = "Lnet/minecraft/util/math/Vec3d;x:D")
+    @Expression("approximatelyEquals(?.x, ?.x)")
+    @WrapOperation(method = "move", at = @At("MIXINEXTRAS:EXPRESSION"))
+    boolean checkHorizontalCollisionsAtW(
+        double beforeX3, double afterX3, Operation<Boolean> original,
+        @Local(argsOnly = true) Vec3d movement,
+        @Share("adjustedForCollisionsMovement") LocalRef<Vec4d> ref
+    ){
+        Vec4d movement4 = Vec4d.of(movement);
+        Vec4d adjustedForCollisionsMovement = ref.get();
+        return original.call(movement4.x4, adjustedForCollisionsMovement.x4)
+            && original.call(movement4.w, adjustedForCollisionsMovement.w);
     }
 
     @WrapOperation(
