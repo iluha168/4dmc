@@ -160,6 +160,8 @@ public class Vec4d extends RelativeVec4d implements Position4d, Pos3Equivalent<V
     }
     @Override
     public Vec4d subtract(double x, double y, double z) {
+        if (x == 0)
+            return this.subtract(0, y, z, 0);
         return Vec4d.of(super.subtract(x, y, z));
     }
 
@@ -187,6 +189,8 @@ public class Vec4d extends RelativeVec4d implements Position4d, Pos3Equivalent<V
 
     @Override
     public Vec4d add(double x, double y, double z) {
+        if (x == 0)
+            return this.add(0, y, z, 0);
         return Vec4d.of(super.add(x, y, z));
     }
 

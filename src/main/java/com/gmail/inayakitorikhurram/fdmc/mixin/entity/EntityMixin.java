@@ -7,6 +7,7 @@ import com.gmail.inayakitorikhurram.fdmc.mixininterfaces.Entity4;
 import com.gmail.inayakitorikhurram.fdmc.util.MixinUtil;
 import com.llamalad7.mixinextras.expression.Definition;
 import com.llamalad7.mixinextras.expression.Expression;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.ModifyReceiver;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
@@ -26,6 +27,7 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.storage.WriteView;
 import net.minecraft.util.Nameable;
 import net.minecraft.util.math.*;
+import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.world.World;
 import net.minecraft.world.entity.EntityChangeListener;
 import net.minecraft.world.entity.EntityLike;
@@ -115,6 +117,13 @@ public abstract class EntityMixin implements Nameable, EntityLike, CommandOutput
             speed4.z * (double)yawCos + speed4.x * (double)yawSin,
             speed4.w
         ));
+    }
+
+    @Definition(id = "ZERO", field = "Lnet/minecraft/util/math/Vec3d;ZERO:Lnet/minecraft/util/math/Vec3d;")
+    @Expression("ZERO")
+    @ModifyExpressionValue(method = "adjustMovementForCollisions(Lnet/minecraft/util/math/Vec3d;Lnet/minecraft/util/math/Box;Ljava/util/List;)Lnet/minecraft/util/math/Vec3d;", at = @At("MIXINEXTRAS:EXPRESSION"))
+    private static Vec3d fdmc$adjustMovementForCollisions4(Vec3d original) {
+	    return RelativeVec4d.ZERO;
     }
 
     @Redirect(
@@ -397,5 +406,53 @@ public abstract class EntityMixin implements Nameable, EntityLike, CommandOutput
             double newW = this.calculatePistonMovementFactor(Direction4Constants.Axis4Constants.W, movement.w);
             cir.setReturnValue(Math.abs(newW) <= MathHelper.EPSILON ? RelativeVec4d.ZERO : new RelativeVec4d(0, 0, 0, newW));
         }
+    }
+
+    @WrapOperation(method = "adjustMovementForCollisions(Lnet/minecraft/util/math/Vec3d;Lnet/minecraft/util/math/Box;Ljava/util/List;)Lnet/minecraft/util/math/Vec3d;", at = @At(
+        value = "INVOKE", target = "Lnet/minecraft/util/shape/VoxelShapes;calculateMaxOffset(Lnet/minecraft/util/math/Direction$Axis;Lnet/minecraft/util/math/Box;Ljava/lang/Iterable;D)D"
+    ))
+    private static double collisions$calculateMaxOffsetW(Direction.Axis axis, Box box, Iterable<VoxelShape> shapes, double maxDist, Operation<Double> original) {
+        if (!axis.equals(Direction4Constants.Axis4Constants.W)) {
+            return original.call(axis, box, shapes, maxDist);
+        }
+        Box4 box4 = (Box4) box;
+        for (VoxelShape shape : shapes) {
+            if (Math.abs(maxDist) < 1E-7) {
+                return 0;
+            }
+            Box4 shapeBox = Box4.converted(shape.getBoundingBox());
+            if (!box4.flatten().intersects(shapeBox.flatten()))
+                continue; // Does not touch us in 3D, skipping
+            if (maxDist > 0) {
+                double distanceAnthOfBox  = shapeBox.minW - box4.maxW;
+                if (distanceAnthOfBox  >= 0)
+                    maxDist = Math.min(maxDist, distanceAnthOfBox );
+            } else if (maxDist < 0) {
+                double distanceKenthOfBox = shapeBox.maxW - box4.minW;
+                if (distanceKenthOfBox <= 0)
+                    maxDist = Math.max(maxDist, distanceKenthOfBox);
+            }
+        }
+        return maxDist;
+    }
+
+
+    @Definition(id = "movement", local = @Local(type = Vec3d.class, argsOnly = true))
+    @Definition(id = "x", field = "Lnet/minecraft/util/math/Vec3d;x:D")
+    @Definition(id = "adjusted", local = @Local(type = Vec3d.class, ordinal = 1))
+    @Expression("movement.x != adjusted.x")
+    @ModifyExpressionValue(method = "adjustMovementForCollisions(Lnet/minecraft/util/math/Vec3d;)Lnet/minecraft/util/math/Vec3d;", at = @At(value = "MIXINEXTRAS:EXPRESSION"))
+    boolean collisions$checkIfAdjustedW(boolean original, @Local(argsOnly = true) Vec3d movement3, @Local(ordinal = 1) Vec3d adjusted3){
+        RelativeVec4d movement = (RelativeVec4d) movement3;
+        RelativeVec4d adjusted = (RelativeVec4d) adjusted3;
+        return original || movement.w != adjusted.w;
+    }
+
+    @Redirect(method = "adjustMovementForCollisions(Lnet/minecraft/util/math/Vec3d;)Lnet/minecraft/util/math/Vec3d;", at = @At(
+        value = "INVOKE", target = "Lnet/minecraft/util/math/Box;stretch(DDD)Lnet/minecraft/util/math/Box;", ordinal = 0
+    ))
+    Box collisions$stretch4(Box instance, double x, double y, double z, @Local(argsOnly = true) Vec3d movement3){
+        RelativeVec4d movement = (RelativeVec4d) movement3;
+        return ((Box4) instance).stretch(movement.x, y, z, movement.w);
     }
 }
