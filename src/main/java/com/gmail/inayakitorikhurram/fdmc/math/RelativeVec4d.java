@@ -95,6 +95,10 @@ public class RelativeVec4d extends Vec3d implements Position4d, Pos3Equivalent<V
         return relativeVec4d;
     }
 
+    public static RelativeVec4d of(Vec4i<?, ?> vec) {
+        return new RelativeVec4d(vec.getX4(), vec.getY4(), vec.getZ4(), vec.getW4());
+    }
+
     public static RelativeVec4d converted(double x, double y, double z) {
 
             double[] xw = FDMCMath.splitX3(x);
