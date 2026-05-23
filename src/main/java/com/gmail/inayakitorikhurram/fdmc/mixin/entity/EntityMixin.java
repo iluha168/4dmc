@@ -98,6 +98,15 @@ public abstract class EntityMixin implements Nameable, EntityLike, CommandOutput
     @Shadow
     protected abstract double calculatePistonMovementFactor(Direction.Axis axis, double offsetFactor);
 
+    @Shadow
+    public abstract void setVelocity(Vec3d velocity);
+
+    @Shadow
+    public abstract Vec3d getVelocity();
+
+    @Shadow
+    public boolean velocityDirty;
+
     @Inject(method = "<init>", at = @At("TAIL"))
     void construct4(EntityType<?> type, World world, CallbackInfo ci) {
         pistonMovementDelta = new double[]{0,0,0,0};
@@ -454,5 +463,81 @@ public abstract class EntityMixin implements Nameable, EntityLike, CommandOutput
     Box collisions$stretch4(Box instance, double x, double y, double z, @Local(argsOnly = true) Vec3d movement3){
         RelativeVec4d movement = (RelativeVec4d) movement3;
         return ((Box4) instance).stretch(movement.x, y, z, movement.w);
+    }
+
+    @Redirect(
+        method = "adjustMovementForCollisions(Lnet/minecraft/util/math/Vec3d;)Lnet/minecraft/util/math/Vec3d;",
+        at = @At(value = "NEW", target = "(DDD)Lnet/minecraft/util/math/Vec3d;")
+    )
+    Vec3d adjustMovement(double x, double y, double z, @Local(argsOnly = true) Vec3d movement3) {
+        RelativeVec4d movement = (RelativeVec4d) movement3;
+        return new RelativeVec4d(movement.x, y, movement.z, movement.w);
+    }
+
+    @WrapOperation(method = "pushAwayFrom", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/math/MathHelper;absMax(DD)D"), require = 1)
+    double pushAwayFrom$absDW(
+        double dx3, double dz, Operation<Double> original,
+        @Local(argsOnly = true) Entity other,
+        @Share("dx") LocalDoubleRef dxRef, @Share("dw") LocalDoubleRef dwRef
+    ) {
+        Vec4d thisPos = (Vec4d) this.getEntityPos();
+        Vec4d otherPos = (Vec4d) other.getEntityPos();
+
+        double dx = otherPos.x4 - thisPos.x4;
+        dxRef.set(dx);
+        double dw = otherPos.w - thisPos.w;
+        dwRef.set(dw);
+
+        return original.call(original.call(dx, dz), dw);
+    }
+
+    @Definition(id = "d", local = @Local(type = double.class, ordinal = 0))
+    @Definition(id = "f", local = @Local(type = double.class, ordinal = 2))
+    @Expression("d / @(f)")
+    @ModifyExpressionValue(method = "pushAwayFrom", at = @At(value = "MIXINEXTRAS:EXPRESSION", ordinal = 0), require = 1)
+    double pushAwayFrom$divideW(double divFactor, @Share("dx") LocalDoubleRef dxRef, @Share("dw") LocalDoubleRef dwRef){
+        dxRef.set(dxRef.get() / divFactor);
+        dwRef.set(dwRef.get() / divFactor);
+        return divFactor;
+    }
+
+    @Definition(id = "d", local = @Local(type = double.class, ordinal = 0))
+    @Definition(id = "g", local = @Local(type = double.class, ordinal = 3))
+    @Expression("d * @(g)")
+    @ModifyExpressionValue(method = "pushAwayFrom", at = @At(value = "MIXINEXTRAS:EXPRESSION", ordinal = 0), require = 1)
+    double pushAwayFrom$multiplyW(double mulFactor, @Share("dx") LocalDoubleRef dxRef, @Share("dw") LocalDoubleRef dwRef){
+        mulFactor *= 0.05f;
+        dxRef.set(dxRef.get() * mulFactor);
+        dwRef.set(dwRef.get() * mulFactor);
+        return mulFactor;
+    }
+
+    @Definition(id = "addVelocity", method = "Lnet/minecraft/entity/Entity;addVelocity(DDD)V")
+    @Expression("this.addVelocity(?, ?, ?)")
+    @Redirect(method = "pushAwayFrom", at = @At("MIXINEXTRAS:EXPRESSION"))
+    void pushAwayFrom$thisAddVelocity(
+        Entity This, double deltaX, double deltaY, double deltaZ,
+        @Share("dx") LocalDoubleRef dxRef, @Share("dw") LocalDoubleRef dwRef
+    ) {
+        This.addVelocity(new RelativeVec4d(-dxRef.get(), deltaY, deltaZ, -dwRef.get()));
+    }
+
+    @Definition(id = "addVelocity", method = "Lnet/minecraft/entity/Entity;addVelocity(DDD)V")
+    @Definition(id = "other", local = @Local(type = Entity.class, argsOnly = true))
+    @Expression("other.addVelocity(?, ?, ?)")
+    @Redirect(method = "pushAwayFrom", at = @At("MIXINEXTRAS:EXPRESSION"))
+    void pushAwayFrom$otherAddVelocity(
+        Entity other, double deltaX, double deltaY, double deltaZ,
+        @Share("dx") LocalDoubleRef dxRef, @Share("dw") LocalDoubleRef dwRef
+    ) {
+        other.addVelocity(new RelativeVec4d(dxRef.get(), deltaY, deltaZ, dwRef.get()));
+    }
+
+    @Redirect(method = "addVelocity(Lnet/minecraft/util/math/Vec3d;)V", at = @At(
+        value = "INVOKE", target = "Lnet/minecraft/entity/Entity;addVelocity(DDD)V"
+    ))
+    void addVelocity(Entity instance, double deltaX, double deltaY, double deltaZ, @Local(argsOnly = true) Vec3d delta) {
+        this.setVelocity(this.getVelocity().add(delta));
+        this.velocityDirty = true;
     }
 }

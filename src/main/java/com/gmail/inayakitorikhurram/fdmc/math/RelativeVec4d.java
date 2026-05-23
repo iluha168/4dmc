@@ -85,11 +85,11 @@ public class RelativeVec4d extends Vec3d implements Position4d, Pos3Equivalent<V
     }
 
     public static RelativeVec4d of(Vec3d vec3d) {
-        if (vec3d instanceof RelativeVec4d relativeVec4d) {
-            return relativeVec4d;
-        }
         if (vec3d instanceof Vec4d vec4d) {
             return new RelativeVec4d(vec4d.x4, vec4d.y, vec4d.z, vec4d.w);
+        }
+        if (vec3d instanceof RelativeVec4d relativeVec4d) {
+            return relativeVec4d;
         }
 
         double[] xw = FDMCMath.splitX3(vec3d.x);
