@@ -284,7 +284,12 @@ public class Box4 extends Box {
 
     @Override
     public Optional<Vec3d> raycast(Vec3d from, Vec3d to) {
-        return super.raycast(from, to); // TODO implement
+        for (Box slice : this.slices()) {
+            Optional<Vec3d> result = slice.raycast(from, to);
+            if (result.isPresent())
+                return result;
+        }
+        return Optional.empty();
     }
 
     @Override
