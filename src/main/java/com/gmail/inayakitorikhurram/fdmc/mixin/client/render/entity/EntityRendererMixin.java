@@ -1,7 +1,6 @@
 package com.gmail.inayakitorikhurram.fdmc.mixin.client.render.entity;
 
 import com.gmail.inayakitorikhurram.fdmc.FDMCConstants;
-import com.gmail.inayakitorikhurram.fdmc.math.BlockPos4;
 import com.gmail.inayakitorikhurram.fdmc.math.Box4;
 import com.gmail.inayakitorikhurram.fdmc.math.FDMCMath;
 import com.gmail.inayakitorikhurram.fdmc.math.Vec4d;
@@ -40,11 +39,10 @@ public class EntityRendererMixin {
         Vec4d cameraPos = Vec4d.of(this.dispatcher.camera.getFocusedEntity().getEntityPos());
 
         double dw = cameraPos.w - entityPos.w;
-        int blockDw = BlockPos4.of(this.dispatcher.camera.getFocusedEntity().blockPos).getW4() - BlockPos4.of(entity.blockPos).getW4();
         if(Math.abs(dw) <= FDMCConstants.ENTITY_RENDER_MAX_DW) {
             // the negative because this is used to show how far out it is from the player
             ((EntityRenderStateAccess) state).setDw(-dw);
-            return original.call(delta, start, end) + FDMCMath.getOffsetX(blockDw);
+            return original.call(delta, start, end) + FDMCMath.getOffsetX(Math.round(dw));
         } else {
             return original.call(delta, start, end);
         }

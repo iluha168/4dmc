@@ -50,6 +50,9 @@ public class FDMCMath {
     public static int getOffsetX(int dw){
         return dw * FDMCConstants.STEP_DISTANCE;
     }
+    public static long getOffsetX(long dw){
+        return dw * FDMCConstants.STEP_DISTANCE;
+    }
 
 
     public static double mod(double a, double b){
